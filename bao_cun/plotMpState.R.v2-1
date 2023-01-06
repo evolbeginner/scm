@@ -1,0 +1,215 @@
+#! /bin/env Rscript
+
+# version 2.1
+# itol pie chart output supported
+
+################################################
+#options(warn=-1)
+options(show.error.locations = TRUE)
+
+suppressMessages(library(phytools))
+suppressMessages(library(phylobase))
+
+library(ape)
+library(phytools)
+library(phangorn)
+library(getopt)
+library(this.path)
+library(base)
+
+DIR <- dirname(this.path())
+
+source(paste(DIR, "phytools_acc.R", sep='/'))
+
+
+################################################
+MODELS <- c('ER', 'SYM', 'ARD')
+ITOL_PARAMS <- c(1, 0.1)
+
+
+################################################
+# functions
+get_node2tips <- function(t){
+	# note that here internal node index starts from 1, which differs from the default in ape
+	#sapply((t$Nnode+1+1):(t$Nnode+1+t$Nnode), FUN=function(x){t$tip.label[unlist(Descendants(t, x, type = c("tips")))] } )
+	sapply((t$Nnode+1+1):(t$Nnode+1+t$Nnode), FUN=function(x){t$tip.label[unlist(Descendants(t, x, type = c("tips")))] } )
+}
+
+
+generatePie <- function(t){
+	a <- numeric(length(traits))
+	nodes <- sapply(node2tips, FUN=function(tips){findMRCA(t, tips)})
+	node2traits <- sapply( nodes, FUN=function(x){t$node.label[x-t$Nnode-1]} )
+	m <- t(sapply( node2traits, FUN=function(x){ a[which(traits==x)] <- a[which(traits==x)]+1; return(a) } ))
+	colnames(m) <- traits
+	rownames(m) <- NULL
+	return(m)
+}
+
+
+get_node_to_two_taxon_name <- function(t){
+	node_to_two_taxon_name <- vector()
+	t.pb <- phylo4(t) # phylobase
+	n_tips <- length(t$tip.label)
+	n_all_nodes <- t$Nnode + length(t$tip.label)
+	for(i in (n_tips+1):n_all_nodes){
+		children <- children(t.pb, i)
+		tips <- NULL
+		for(child in children){
+			tip_node <- unlist(Descendants(t, child, type = c("tips")))[1]
+			tips <- append(tips, t$tip.label[tip_node])
+		}
+		# note that here internal node index starts from 1, which differs from the default in ape
+		node_to_two_taxon_name[i-n_tips] <- paste(tips, collapse="|")
+	}
+	return(node_to_two_taxon_name)
+}
+
+
+################################################
+node_names = list()
+treefile = NULL
+statefile = NULL
+nsim <- 100
+model <- "ARD"
+pic_type <- 'rec'
+skip <- 0
+
+ml_tree <- NULL
+itol_outfile <- NULL
+outfile <- NULL
+
+fsize <- NULL
+height <- NULL
+width <- 8
+cex <- NULL
+
+
+################################################
+command=matrix(c( 
+	'skip', 'sk', 2, 'integer',
+	'tree', 't', 2, 'character',
+	'ml_tree', 'm', 2, 'character',
+	'fsize', 'f', 2, 'character',
+	'height', 'h', 2, 'character',
+	'width', 'w', 2, 'character',
+	'cex', 'c', 2, 'character',
+	'itol', 'i', 2, 'character',
+	'outfile', 'o', 2, 'character'
+	), byrow=T, ncol=4
+)
+args=getopt(command)
+
+if(! is.null(args$skip)){
+	skip <- args$skip
+}
+if(! is.null(args$tree)){
+	treefile <- args$tree
+}
+if(! is.null(args$ml_tree)){
+	ml_treefile <- args$ml_tree
+	ml_tree <- read.tree(ml_treefile)
+}
+if(! is.null(args$fsize)){
+	fsize <- as.numeric(args$fsize)
+}
+if(! is.null(args$height)){
+	height <- as.numeric(args$height)
+}
+if(! is.null(args$width)){
+	width <- as.numeric(args$width)
+}
+if(! is.null(args$cex)){
+	cex <- as.numeric(args$cex)
+}
+if(! is.null(args$itol)){
+	itol_outfile <- args$itol
+}
+if(! is.null(args$outfile)){
+	outfile <- args$outfile
+}else{
+	stop("outfile has to be specified! Exiting ......")
+}
+
+tree <- read.tree(treefile, skip=skip)
+
+
+################################################
+if(is(tree, "phylo")){tree1<-tree; n=1}else{tree1<-tree[[1]]; n=length(tree)}
+
+# specify the mapped_tree
+if(is.null(ml_tree)){
+	mapped_tree = tree1
+}else{
+	mapped_tree = ml_tree
+}
+
+
+# get node_2_tip rela: e.g., 50 => tip1, tip2, tip10
+node2tips <- get_node2tips(mapped_tree)
+node_to_two_taxon_name <- get_node_to_two_taxon_name(mapped_tree)
+
+traits <- unlist(unique( sapply ( tree, FUN=function(x){unique(x$node.label)} ) ))
+traits <- sort(unique(traits))
+traits <- unique(traits)
+
+if(is.null(args["col"])){
+	cols <- setNames(palette()[1:length(unique(colnames(states)))],sort(unique(colnames(states))))
+}else{
+	cols <- c('A'='red', 'F'='purple', 'M'='green', 'N'='blue', 'Z'='yellow')
+}
+
+cols <- cols[which(names(cols) %in% traits)]
+#cols <- cols[order(match(cols, sort(names(cols))))]
+
+
+################################################
+pie.list <- lapply(c(tree), generatePie)
+pie <- Reduce('+', pie.list)/length(pie.list) #pie.list[[1]] + pie.list[[2]]
+print(pie)
+cat("\n")
+
+
+################################################
+# for iTOL
+if(! is.null(itol_outfile)){
+	sink(file = itol_outfile, split = F)
+	cat('DATASET_PIECHART', fill=T)
+	cat('SEPARATOR SPACE', fill=T)
+	cat("DATASET_LABEL pie_chart", fill=T)
+	cat("FIELD_LABELS", traits, fill=T)
+	cat("FIELD_COLORS", cols, fill=T)
+	cat("\n")
+	cat('DATA', fill=T)
+	for(i in 1:nrow(pie)){
+		cat(append(node_to_two_taxon_name[i], c(ITOL_PARAMS, pie[i,])), collapse=' ')
+		cat("\n")
+	}
+	sink()
+}
+
+
+################################################
+#fsize = auto_fsize(tree1, k=70)
+if(is.null(fsize)){
+	fsize = auto_fsize(tree1)
+}
+if(is.null(height)){
+	height = auto_height(tree1)
+}
+if(is.null(cex)){
+	cex <- auto_cex(tree1)
+}
+print(c(fsize, height, cex)); #q()
+
+pdf(outfile, height=height, width=width)
+#plotTree(mapped_tree, pic_type, lwd=1)
+plotTree(mapped_tree, pic_type, fsize=fsize, lwd=1)
+
+#nodelabels(pie=pie, piecol=cols, cex=fsize)
+nodelabels(pie=pie, piecol=cols, cex=cex)
+
+dev.off()
+
+q()
+

@@ -1,0 +1,112 @@
+#! /bin/env bash
+
+
+###########################################
+source ~/tools/self_bao_cun/packages/bash/util.sh
+
+is_prepare=false
+is_outgrp=false
+cpu=5
+skip=900
+
+
+###########################################
+do_preparation(){
+	cp ../traits.txt ./
+
+	cat ../../../../../exclude.list > exclude.list
+	if [ "$is_outgrp" = false ]; then
+		sed '/-$/!d' traits.txt | cut -f 1 >> exclude.list
+	fi
+
+	if [ $is_outgrp ]; then
+		sed -i '/-$/d' traits.txt
+	else
+		awk '{if($2=="-"){$2="Z"}{print $1"\t"$2}}' traits.txt | sponge traits.txt
+	fi
+
+	if [ $is_outgrp ]; then
+		# ufb_tree
+		binary=`is_remove_needed ../../ufb.tre`
+		if [ "$binary" == true ]; then
+			nw_prune -f ../../ufb.tre exclude.list | bash ~/tools/self_bao_cun/phylo_mini/remove_duplicate_quote_nwk.sh | sponge ufb.tre
+		else
+			nw_prune -f ../../ufb.tre exclude.list | sponge ufb.tre
+		fi
+
+		# rooted_tree
+		binary=`is_remove_needed ../../rooted.tre`
+		if [ "$binary" == true ]; then
+			nw_prune -f ../../rooted.tre exclude.list | bash ~/tools/self_bao_cun/phylo_mini/remove_duplicate_quote_nwk.sh > rooted.tre
+		else
+			nw_prune -f ../../rooted.tre exclude.list | sponge rooted.tre
+		fi
+	fi
+}
+
+
+function is_remove_needed(){
+	tree=$1
+	leaf_no=`head -1 $tree | nw_stats - | grep leaves | awk '{print $2}'`
+	quote_no=`head -1 $tree | sed 's/(/\n/g' | wc -l`
+	if [ $leaf_no != $quote_no ]; then
+		echo "true";
+	else
+		echo "false";
+	fi
+}
+
+
+###########################################
+while [ $# -gt 0 ]; do
+	case $1 in
+		--prepare)
+			is_prepare=true
+			;;
+		--ml)
+			methods=(${methods[@]} ml)
+			;;
+		--mcmc)
+			methods=(${methods[@]} mcmc)
+			shift
+			;;
+		--cpu)
+			cpu=$2
+			shift
+			;;
+		--no_outgrp)
+			is_outgrp=false
+			;;
+		--w_outgrp)
+			is_outgrp=true
+			;;
+		--outdir)
+			outdir=$2
+			shift
+			;;
+		--force)
+			is_force=true
+			;;
+	esac
+	shift
+done
+
+
+###########################################
+mkdir_with_force $outdir $is_force
+
+cd $outdir >/dev/null
+
+
+###########################################
+if [ $is_prepare ]; then
+	do_preparation
+fi
+
+for method in ${methods[@]}; do
+	echo $method
+	~/LHW-tools/scm/asr_by_scm.R -t ufb.tre --model ALL --nsim 100 --state ./traits.txt --method $method --pic_type phylogram -o scm.trees-$method --cpu $cpu --skip $skip
+	Rscript ~/LHW-tools/scm/plotMpState.R -t scm.trees-$method --ml_tree rooted.tre --skip 0 -o asr-$method.pdf
+done
+
+

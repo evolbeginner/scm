@@ -1,0 +1,132 @@
+#! /bin/env Rscript
+
+
+################################################
+#options(warn=-1)
+suppressMessages(library(phytools))
+
+library(ape)
+library(phytools)
+library(phangorn)
+library(getopt)
+library(this.path)
+
+DIR <- dirname(this.path())
+
+source(paste(DIR, "phytools_acc.R", sep='/'))
+#source(paste(DIR, "convert_traits_to_matrix/convert_traits_to_matrix.R", sep='/'))
+
+
+################################################
+MODELS <- c('ER', 'SYM', 'ARD')
+
+
+################################################
+# functions
+get_node2tips <- function(t){
+	sapply((t$Nnode+1+1):(t$Nnode+1+t$Nnode), FUN=function(x){t$tip.label[unlist(Descendants(t, x, type = c("tips")))] } )
+}
+
+
+################################################
+node_names = list()
+treefile = NULL
+statefile = NULL
+nsim <- 100
+model <- "ARD"
+pic_type <- 'rec'
+skip <- 0
+
+ml_tree <- NULL
+outfile <- NULL
+
+height <- 7
+
+
+################################################
+command=matrix(c( 
+	'skip', 'sk', 2, 'integer',
+	'tree', 't', 2, 'character',
+	'ml_tree', 'm', 2, 'character',
+	'outfile', 'o', 2, 'character'
+	), byrow=T, ncol=4
+)
+args=getopt(command)
+
+if(! is.null(args$skip)){
+	skip <- args$skip
+}
+if(! is.null(args$tree)){
+	treefile <- args$tree
+}
+if(! is.null(args$ml_tree)){
+	ml_treefile <- args$ml_tree
+	ml_tree <- read.tree(ml_treefile)
+}
+if(! is.null(args$outfile)){
+	outfile <- args$outfile
+}else{
+	stop("outfile has to be specified! Exiting ......")
+}
+
+tree <- read.tree(treefile, skip=skip)
+
+
+################################################
+if(is(tree, "phylo")){tree1<-tree; n=1}else{tree1<-tree[[1]]; n=length(tree)}
+
+# specify the mapped_tree
+if(is.null(ml_tree)){
+	mapped_tree = tree1
+}else{
+	mapped_tree = ml_tree
+}
+
+# get node_2_tip rela: e.g., 50 => tip1, tip2, tip10
+node2tips <- get_node2tips(mapped_tree)
+
+traits <- unlist(unique( sapply ( tree, FUN=function(x){unique(x$node.label)} ) ))
+traits <- sort(unique(traits))
+traits <- unique(traits)
+
+if(is.null(args["col"])){
+	cols <- setNames(palette()[1:length(unique(colnames(states)))],sort(unique(colnames(states))))
+}else{
+	cols <- c('A'='red', 'F'='purple', 'M'='green', 'N'='blue', 'Z'='yellow')
+}
+
+cols <- cols[which(names(cols) %in% traits)]
+#cols <- cols[order(match(cols, sort(names(cols))))]
+#print(cols);q()
+
+
+################################################
+generatePie <- function(t){
+	a <- numeric(length(traits))
+	#m <- t(sapply( t$node.label, FUN=function(x){ ele <- a[which(traits==x)]; a[which(traits==x)]<-ele+1; return(a) } ))
+	nodes <- sapply(node2tips, FUN=function(tips){findMRCA(t, tips)})
+	#m <- t(sapply( t$node.label, FUN=function(x){ a[which(traits==x)] <- a[which(traits==x)]+1; return(a) } ))
+	node2traits <- sapply( nodes, FUN=function(x){t$node.label[x-t$Nnode-1]} )
+	print(node2traits)
+	m <- t(sapply( node2traits, FUN=function(x){ a[which(traits==x)] <- a[which(traits==x)]+1; return(a) } ))
+	colnames(m) <- traits
+	rownames(m) <- NULL
+	return(m)
+}
+
+pie.list <- lapply(c(tree), generatePie)
+
+pie <- Reduce('+', pie.list)/length(pie.list) #pie.list[[1]] + pie.list[[2]]
+print(pie)
+
+fsize = auto_fsize(tree1, k=90)
+
+pdf(outfile, height=10)
+plotTree(mapped_tree, pic_type, fsize=fsize, lwd=1)
+
+nodelabels(pie=pie, piecol=cols, cex=fsize)
+
+dev.off()
+
+q()
+

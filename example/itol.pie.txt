@@ -1,0 +1,46 @@
+DATASET_PIECHART
+SEPARATOR SPACE
+DATASET_LABEL pie_chart
+FIELD_LABELS A M
+FIELD_COLORS red green
+
+DATA
+uncultured_Bartonella_sp_-MN420701|uncultured_Bartonella_sp_-AY370185 1 0.1 0.9206 0.0794  
+uncultured_Bartonella_sp_-MN420701|uncultured_Bartonella_sp_-KC478385 1 0.1 0.9566 0.0434  
+uncultured_Bartonella_sp_-MN420701|uncultured_Bartonella_sp_-MN420700 1 0.1 0.9977 0.0023  
+uncultured_Bartonella_sp_-KC478385|uncultured_Bartonella_sp_-DQ113413 1 0.1 0.9999 1e-04  
+uncultured_Bartonella_sp_-KC478385|uncultured_Bartonella_sp_-DQ113409 1 0.1 0.9999 1e-04  
+uncultured_Bartonella_sp_-KC478385|uncultured_Bartonella_sp_-KC478388 1 0.1 0.9999 1e-04  
+Candidatus_Tokpelaia_sp_JSC161-GCA_003331105.1|uncultured_Bartonella_sp_-DQ113409 1 0.1 1 0  
+Candidatus_Tokpelaia_sp_JSC085-GCA_003331005.1|uncultured_Bartonella_sp_-DQ113409 1 0.1 1 0  
+uncultured_Bartonella_sp_-DQ113409|Candidatus_Tokpelaia_sp_JSC188-GCA_003331065.1 1 0.1 1 0  
+uncultured_Bartonella_sp_-DQ113409|uncultured_Bartonella_sp_-DQ113412 1 0.1 1 0  
+Candidatus_Tokpelaia_sp_JSC188-GCA_003331065.1|Candidatus_Tokpelaia_sp_JSC189-GCA_003331045.1 1 0.1 1 0  
+uncultured_Bartonella_sp_-DQ113413|Candidatus_Tokpelaia_hoelldoblerii-GCA_002005325.1 1 0.1 0.9999 1e-04  
+uncultured_Bartonella_sp_-AY370185|Bartonella_sp_A190GS-KP027793 1 0.1 0.9159 0.0841  
+Bartonella_tamiae-EF672729|uncultured_Bartonella_sp_-AY370185 1 0.1 0.9153 0.0847  
+uncultured_Bartonella_sp_-AY370185|uncultured_Bartonella_sp_-EU055544 1 0.1 0.9997 3e-04  
+uncultured_Bartonella_sp_-AY370185|uncultured_Bartonella_sp_-AY370187 1 0.1 0.9997 3e-04  
+uncultured_Bartonella_sp_-EU055544|Bartonella_apis-GCA_002007505.1 1 0.1 0.9999 1e-04  
+Bartonella_sp_A190GS-KP027793|Bartonella_bacilliformis_San_Pedro600-02-GCA_000607205.1 1 0.1 0.7798 0.2202  
+Bartonella_bacilliformis_San_Pedro600-02-GCA_000607205.1|Bartonella_australis_Aust_NH1-GCA_000341355.1 1 0.1 0.0176 0.9824  
+Bartonella_australis_Aust_NH1-GCA_000341355.1|Bartonella_sp_-MN256381 1 0.1 6e-04 0.9994  
+Bartonella_sp_-MN256381|Bartonella_sp_-MN252213 1 0.1 0 1  
+Bartonella_sp_-MN252213|Bartonella_sp_-MN504667 1 0.1 0 1  
+Bartonella_sp_-MN252213|Bartonella_sp_JB15-GCA_002022605.1 1 0.1 0 1  
+Bartonella_sp_-MN504667|Bartonella_sp_-MN504672 1 0.1 0 1  
+Bartonella_sp_-MN504667|Bartonella_sp_-MN256363 1 0.1 0 1  
+Bartonella_sp_-LC483834|Bartonella_sp_-MN504667 1 0.1 0 1  
+Bartonella_sp_-MN504667|Bartonella_sp_-MN252345 1 0.1 0 1  
+Bartonella_henselae_str_Houston-1-GCA_001525625.2|Bartonella_sp_-MN504667 1 0.1 0 1  
+Bartonella_henselae_JK_41-GCA_000516735.1|Bartonella_sp_-MN504667 1 0.1 0 1  
+Bartonella_sp_-MN504667|Bartonella_sp_-MN504687 1 0.1 0 1  
+Bartonella_sp_-MN504687|Bartonella_durdenii-EU294511 1 0.1 0 1  
+Bartonella_quintana-KY436644|Bartonella_sp_-MN252345 1 0.1 0 1  
+Bartonella_sp_-MN252345|Bartonella_bovis-KU859919 1 0.1 0 1  
+Bartonella_bovis-KU859919|Bartonella_sp_BvS12-KU859917 1 0.1 0 1  
+Bartonella_bovis-KU859922|Bartonella_bovis-KU859919 1 0.1 0 1  
+Bartonella_bovis-KU859919|Bartonella_bovis-KU859921 1 0.1 0 1  
+Bartonella_sp_BvS12-KU859917|Bartonella_bovis_m02-GCA_000385395.1 1 0.1 0 1  
+Bartonella_sp_-MN256363|Bartonella_sp_-MN256370 1 0.1 0 1  
+Bartonella_sp_-MN504672|Bartonella_sp_-MN504674 1 0.1 0 1  

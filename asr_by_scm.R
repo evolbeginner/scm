@@ -1,0 +1,210 @@
+#! /bin/env Rscript
+
+
+################################################
+#options(warn=-1)
+suppressMessages(library(phytools))
+
+library(ape)
+library(phytools)
+library(getopt)
+library(parallel)
+library(this.path)
+suppressMessages(library(R.utils))
+suppressMessages(library(TreeTools))
+
+DIR <- dirname(this.path())
+
+source(paste(DIR, "phytools_acc.R", sep='/'))
+source(paste(DIR, "convert_traits_to_matrix/convert_traits_to_matrix.R", sep='/'))
+#source(paste(DIR, "remove_bad_nwk.R", sep='/'))
+
+
+################################################
+MODELS <- c('ER', 'SYM', 'ARD')
+
+
+################################################
+node_names = list()
+treefile = NULL
+statefile = NULL
+nsim <- 100
+model <- "ARD"
+skip <- 0
+pic_type <- 'rec'
+cpu <- 2
+
+
+################################################
+command=matrix(c( 
+	'help', 'h', 0, 'loical',
+	'method', 'me', 2, 'character',
+	'nsim', 'nsim', 2, 'integer',
+	'model', 'm', 2, 'character',
+	'skip', 'sk', 2, 'integer',
+	'node', 'n', 2, 'character',
+	'pic_type', '', 2, 'character',
+	'tree', 't', 2, 'character',
+	'outfile', 'o', 2, 'character',
+	'state', 's', 2, 'character',
+	'cpu', 'cpu', 2, 'integer'
+	), byrow=T, ncol=4
+)
+args=getopt(command)
+
+if(! is.null(args$nsim)){
+	nsim = args$nsim
+}
+if(! is.null(args$model) && args$model != 'ALL' ){
+	model = args$model
+}
+if(! is.null(args$skip)){
+	skip = args$skip
+}
+if(! is.null(args[['node']])){
+	node_strings <- strsplit(args$node, ',')[[1]] # c("a_b", "a_d")
+	node_names <- sapply(node_strings, strsplit, split='_')
+}
+if(! is.null(args[['method']])){
+	method = args$method
+}
+if(! is.null(args$pic_type)){
+	pic_type <- args$pic_type
+}
+if(! is.null(args$tree)){
+	treefile <- args$tree
+}
+if(! is.null(args$outfile)){
+	outfile <- args$outfile
+	if(file.exists(outfile)){file.remove(outfile)}
+}else{
+	stop("outfile must be given!")
+}
+if(! is.null(args$state)){
+	statefile <- args$state
+}
+if(! is.null(args$cpu)){
+	cpu <- args$cpu
+}
+
+if (skip > countLines(treefile)){
+	stop(paste('line no. of the treefile", treefile, "> that of skip'))
+}
+
+
+################################################
+run_make_simmap <- function(tree){
+	nodes <- sapply(node_names, getMRCA, phy=tree)
+	edges <- sapply(nodes, detectEdge, tree=tree)
+
+	if(method == 'ml'){
+		# select the best model
+		mtrees <- make.simmap(tree, states, model=model, nsim=nsim, Q='empirical')
+	}else if(method == 'mcmc'){
+		mtrees <- make.simmap(tree, states, model=model, nsim=nsim, Q='mcmc', burnin=1000, samplefreq=2, use.empirical=F, prior=list('alpha'=1, 'beta'=1))
+	}else{
+		stop(paste("Wrong method:", method, sep=' '))
+	}
+	phys <- do_make_simmap_for_mtrees(mtrees, tree)
+}
+
+
+################################################
+getEdgeTrait <- function(x, m){
+	#x: edge
+	names(m$maps[[x]])[1]
+}
+
+detectEdge <- function(tree, node){
+	which(t$edge[,1] == node)[1]
+}
+
+f <- function(m, edges){
+	#traits.named <- c(m$maps[[edge]], m$maps[[6]])
+	traits <- sapply(edges, getEdgeTrait, m=m)
+	traits <- paste(traits, collapse='_')
+	return(traits)
+}
+
+select_model <- function(model){
+	if(is.null(model)){
+		fits = list()
+		for(m in MODELS){
+			fits[[m]] <- fitMk(t, states, model=m)
+		}
+		sort(sapply(fits, AIC))
+		model = names(sort(sapply(fits, AIC))[1])
+	}else{
+		model
+	}
+}
+
+make_simmap_to_mp_trait <- function(mtree, t){
+	traits <- sapply(mtree$maps, FUN=function(x){c(names(x)[1])})
+	a <- sapply(1:length(traits), FUN=function(x){c(as.numeric(mtree$edge[x,][1]), traits[x])})
+	b <- a
+	#b <- a[,order(a[1,])]
+	t$node.label <- sapply(unique(b[1,]), FUN=function(x){b[2, which(b[1,] == x)[1]]})
+	#write.tree(t, file=outfile, append=T)
+	return(t)
+}
+
+do_make_simmap_for_mtrees <- function(mtrees, t){
+	#summary.scm <- summary(mtrees)
+	#write.table(summary.scm$ace[1:Ntip(t)-1,],"haha")
+	phys <- mapply(make_simmap_to_mp_trait, mtrees, c(t), SIMPLIFY=F)
+	return(phys)
+}
+
+
+################################################
+trees <- read.tree(treefile, skip=skip)
+traits.df <- read.table(statefile, colClasses='character')
+states <- from_traits_to_states(traits.df)
+
+if(is.null(args["col"])){
+	cols <- setNames(palette()[1:length(unique(colnames(states)))],sort(unique(colnames(states))))
+}else{
+	cols <- sort(c(A='blue', M='red', Z='yellow'))
+}
+
+mdodel <- select_model(model)
+
+
+################################################
+#sapply(as.list(trees), run_make_simmap)
+ts <- mclapply(trees, run_make_simmap, mc.cores = cpu)
+
+# convert ts from a list to a multiphylo object
+for(i in 1:length(ts)){
+	write.tree(as.multiPhylo(ts[[i]]), outfile, append=T)
+}
+#lines <- remove_bad_nwk(outfile); writeLines(lines, outfile)
+
+q()
+
+
+fsize <- 1
+#plotTree(t, type=pic_type, fsize=fsize, lwd=1)
+
+summary.scm <- summary(mtrees)
+summary.scm$ace[1:Ntip(t)-1,]
+
+
+################################################
+fsize = auto_fsize(t)
+plotTree(t, type=pic_type, fsize=fsize, lwd=0.1)
+nodelabels(node=1:t$Nnode+Ntip(t), pie=summary.scm$ace, piecol=cols, cex=fsize/0.5)
+
+ace.tip = summary.scm$ace[Ntip(t):(2*Ntip(t)-1)]
+#tiplabels(pie=ace.tip, piecol=cols, cex=fsize/3.6)
+#x <- traits.df$V2
+#tiplabels(pie=to.matrix(x, sort(unique(x))), piecol=cols, cex=fsize/3.6)
+
+
+################################################
+cat("edges:\n")
+print(nodes)
+table(sapply(mtrees, f, edges=edges))
+
+
