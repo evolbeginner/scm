@@ -1,0 +1,2 @@
+# for testing only
+~/LHW-tools/scm/asr_by_scm.R -t ufb.tre --model ALL --state traits.txt --method ml -o ml.asr --cpu 4 --skip 900

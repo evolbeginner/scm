@@ -7,14 +7,49 @@ require 'getoptlong'
 
 ####################################################
 def translate_state(state_str)
-  case state_str
-    when /^A$/
-      return('Salpingoeca_rosetta,Homo_sapiens')
-    when /^N$/
-      return('Arabidopsis_thaliana,Homo_sapiens')
-    when /^Z$/
-      return('root')
+  if $is_holo
+    case state_str
+      when /^A$/
+        return('Symbiodinium_minutum,Paramecium_tetraurelia')
+      when /^N$/
+        return('Arabidopsis_thaliana,Homo_sapiens')
+      when /^Z$/
+        return('root')
+    end
+  elsif $is_tene
+    case state_str
+      when /^A$/
+        return('Salpingoeca_rosetta,Homo_sapiens')
+      when /^N$/
+        return('Daphnia_pulex,Drosophila_melanogaster')
+      when /^F$/
+        return('Spizellomyces_punctatus,Ustilago_maydis')
+      when /^Z$/
+        return('root')
+    end      
+  else
+    case state_str
+      when /^A$/
+        return('Salpingoeca_rosetta,Homo_sapiens')
+      when /^N$/
+        return('Arabidopsis_thaliana,Homo_sapiens')
+      when /^F$/
+        return('Spizellomyces_punctatus,Ustilago_maydis')
+      when /^Z$/
+        return('root')
+    end
   end
+end
+
+
+def auto_detect_is_holo(infile)
+  realpath = `realpath #{infile}`.chomp
+  return (realpath =~ /Holo/ ? true : false)
+end
+
+def auto_detect_is_tene(infile)
+  realpath = `realpath #{infile}`.chomp
+  return (realpath =~ /Tene/ ? true : false)
 end
 
 
@@ -56,8 +91,9 @@ EOF
   states = line.split(/\s+/).select{|i|i=~/\w/} # state_str: 'A'
   new_states = states.map{|state| translate_state(state) }
 
-  while probs = in_fh.readline.chomp.split(/\s+/).delete_if{|i| i =~ /[^0-9\.]/ } do
+  while probs = in_fh.readline.chomp.split(/\s+/).delete_if{|i| i =~ /[^+0-9\.e-]/ } do
     return() if probs.empty?
+    probs.map!{|prob| prob =~ /^0e[+]0+$/ ? 0 : prob}
     out_strs = Array.new
     out_strs << symbionts[count]
     state2prob = new_states.zip(probs)
@@ -73,6 +109,8 @@ end
 infile = nil
 is_joint = false
 is_marginal = false
+$is_holo = false
+$is_tene = false
 
 
 ####################################################
@@ -92,6 +130,11 @@ opts.each do |opt, value|
       is_marginal = true
   end
 end
+
+
+####################################################
+$is_holo = auto_detect_is_holo(infile)
+$is_tene = auto_detect_is_tene(infile)
 
 
 ####################################################

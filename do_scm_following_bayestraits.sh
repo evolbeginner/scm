@@ -9,6 +9,7 @@ source ~/tools/self_bao_cun/packages/bash/util.sh
 is_prepare=true
 is_exclude_traits=false
 is_outgrp=false
+model='ARD'
 nsim=100
 cpu=5
 skip=900
@@ -19,6 +20,7 @@ do_preparation(){
 	cp ../traits.txt ./
 
 	cat ../../../../../exclude.list > exclude.list
+	pwd
 	if [ $is_exclude_traits == true ]; then
 		[ -f ../../../../../exclude-traits.list ] && cat ../../../../../exclude-traits.list >> exclude.list
 		ruby ~/tools/self_bao_cun/others/calculate_overlaps.rb --i1 traits.txt --i2 exclude.list --f1 1 --show 1 --content 1 | sponge traits.txt
@@ -70,6 +72,10 @@ while [ $# -gt 0 ]; do
 	case $1 in
 		--prepare)
 			is_prepare=true
+			;;
+		--model)
+			model=$2
+			shift
 			;;
 		--exclude_trait|--exclude_traits)
 			is_exclude_traits=true
@@ -127,7 +133,7 @@ fi
 for method in ${methods[@]}; do
 	echo $method
 	#[ $method == 'mcmc' ] && nsim=500
-	~/LHW-tools/scm/asr_by_scm.R -t ufb.tre --model ALL --nsim $nsim --state ./traits.txt --method $method --pic_type phylogram -o scm.trees-$method --cpu $cpu --skip $skip
+	~/LHW-tools/scm/asr_by_scm.R -t ufb.tre --model $model --nsim $nsim --state ./traits.txt --method $method --pic_type phylogram -o scm.trees-$method --cpu $cpu --skip $skip
 	Rscript ~/LHW-tools/scm/plotMpState.R -t scm.trees-$method --ml_tree rooted.tre --skip 0 -o asr-$method.pdf --itol itol.pie.txt > plotMp.out
 done
 

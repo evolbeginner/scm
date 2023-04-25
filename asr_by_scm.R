@@ -2,6 +2,13 @@
 
 
 ################################################
+# updated on 2023-04-24
+#	bug fixed for '--method ml'
+# updated on 2023-01-10
+#	model selection bug fixed for --ALL
+
+
+################################################
 #options(warn=-1)
 suppressMessages(library(phytools))
 
@@ -55,9 +62,15 @@ args=getopt(command)
 if(! is.null(args$nsim)){
 	nsim = args$nsim
 }
-if(! is.null(args$model) && args$model != 'ALL' ){
-	model = args$model
+
+if(! is.null(args$model)){
+	if (args$model != 'ALL'){
+		model <- args$model
+	}else if (args$model == 'ALL'){
+		model <- 'ALL'
+	}
 }
+
 if(! is.null(args$skip)){
 	skip = args$skip
 }
@@ -96,12 +109,12 @@ if (skip > countLines(treefile)){
 run_make_simmap <- function(tree){
 	nodes <- sapply(node_names, getMRCA, phy=tree)
 	edges <- sapply(nodes, detectEdge, tree=tree)
-
+	model.best <- select_model(model, tree)
 	if(method == 'ml'){
-		# select the best model
-		mtrees <- make.simmap(tree, states, model=model, nsim=nsim, Q='empirical')
+		mtrees <- make.simmap(tree, states, model=model.best, Q='empirical')
+		mtrees <- append(mtrees, make.simmap(tree, states, model=model.best, Q='empirical'))
 	}else if(method == 'mcmc'){
-		mtrees <- make.simmap(tree, states, model=model, nsim=nsim, Q='mcmc', burnin=1000, samplefreq=2, use.empirical=F, prior=list('alpha'=1, 'beta'=1))
+		mtrees <- make.simmap(tree, states, model=model.best, nsim=nsim, Q='mcmc', burnin=1000, samplefreq=2, use.empirical=F, prior=list('alpha'=1, 'beta'=1))
 	}else{
 		stop(paste("Wrong method:", method, sep=' '))
 	}
@@ -126,14 +139,13 @@ f <- function(m, edges){
 	return(traits)
 }
 
-select_model <- function(model){
-	if(is.null(model)){
+select_model <- function(model, t){
+	if(is.null(model) || model == 'ALL'){
 		fits = list()
 		for(m in MODELS){
 			fits[[m]] <- fitMk(t, states, model=m)
 		}
-		sort(sapply(fits, AIC))
-		model = names(sort(sapply(fits, AIC))[1])
+		model <- names(sort(sapply(fits, AIC))[1])
 	}else{
 		model
 	}
@@ -168,16 +180,19 @@ if(is.null(args["col"])){
 	cols <- sort(c(A='blue', M='red', Z='yellow'))
 }
 
-mdodel <- select_model(model)
-
 
 ################################################
 #sapply(as.list(trees), run_make_simmap)
+if(class(trees) == 'phylo'){
+	trees <- as.multiPhylo(trees)
+}
+print(class(trees))
 ts <- mclapply(trees, run_make_simmap, mc.cores = cpu)
 
 # convert ts from a list to a multiphylo object
 for(i in 1:length(ts)){
-	write.tree(as.multiPhylo(ts[[i]]), outfile, append=T)
+	out_tree <- ifelse(method == 'ml', as.multiPhylo(ts[[i]][1]), as.multiPhylo(ts[[i]]))
+	write.tree(out_tree, outfile, append=T)
 }
 #lines <- remove_bad_nwk(outfile); writeLines(lines, outfile)
 

@@ -183,6 +183,10 @@ if(!is.null(species_list)){
 
 # get node_2_tip rela: e.g., 50 => tip1, tip2, tip10
 node2tips <- get_node2tips(mapped_tree)
+#if(length(node2tips)==1){
+if(class(node2tips) == 'matrix'){
+	node2tips <- list(node2tips[,1])
+}
 node_to_two_taxon_name <- get_node_to_two_taxon_name(mapped_tree)
 
 traits <- unlist(unique( sapply ( tree, FUN=function(x){unique(x$node.label)} ) ))
